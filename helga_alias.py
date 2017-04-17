@@ -69,8 +69,6 @@ def alias(client, channel, nick, message, cmd, args):
             if aliases:
                 # that's a bingo!
                 return u' '.join([unicode(alias) for alias in aliases])
-                #return '{}'.format(aliases)
-                #return aliases
 
 
 @smokesignal.on('names_reply')
