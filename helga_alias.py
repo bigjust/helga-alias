@@ -1,10 +1,14 @@
 import smokesignal
 
-from helga import log
+from helga import log, settings
 from helga.db import db
 from helga.plugins import command
 
+OPS = getattr(settings, 'OPERATORS', [])
+
 logger = log.getLogger(__name__)
+
+
 
 def get_nick_map():
 
@@ -48,6 +52,9 @@ def alias(client, channel, nick, message, cmd, args):
     logger.info('args: %s', args)
 
     if not args:
+        if nick not in OPS:
+            return
+
         for nick_list in get_nick_map():
             client.msg(channel, u' '.join([unicode(alias) for alias in nick_list]))
 
