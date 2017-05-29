@@ -11,6 +11,12 @@ logger = log.getLogger(__name__)
 
 
 def get_nick_map():
+    """
+    Returns the nick map from storage.
+
+    returns a list of lists.
+
+    """
 
     nick_map_doc = db.alias.find_one()
     nick_map = []
@@ -20,6 +26,10 @@ def get_nick_map():
     return nick_map
 
 def update_nick_map(nick_map):
+    """
+    Stores the nick map in storage.
+    """
+
     result = db.alias.replace_one({}, {'nick_map': nick_map}, True)
     logger.info('result.modified: %s', result.modified_count)
 
