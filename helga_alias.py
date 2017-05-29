@@ -95,16 +95,20 @@ def add_names(client, nicks):
 def user_rename(client, oldname, newname):
 
     nick_map = get_nick_map()
-    alias_list = find_aliases(oldname)
+    oldname_aliases = find_aliases(oldname)
+    newname_aliases = find_aliases(newname)
 
-    if not alias_list:
+    if oldname_aliases and newname_aliases:
+        # nick list merge!
+        nick_map.pop(nick_map.index(newname_aliases))
+        nick_map[nick_map.index(oldname_aliases)].extend(newname_aliases)
+
+    elif not oldname_aliases:
+        # we haven't seen either nick, add as a new list
         nick_map.append([oldname, newname])
     else:
-        for nlist in nick_map:
-            if nlist == alias_list:
-                if newname not in nlist:
-                    nlist.append(newname)
-                break
+        # the usual, add new name to a current list
+        nick_map[nick_map.index(oldname_aliases)].append(newname)
 
     update_nick_map(nick_map)
 
