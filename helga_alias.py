@@ -58,9 +58,10 @@ def alias(client, channel, nick, message, cmd, args):
 
     if not args:
         if nick not in OPS:
+            client.msg(channel, u'only operators ({}) can use this command'.format(
+                ','.join(OPS)
+            ))
             return
-    logger.info('args: %s', args)
-
 
         for nick_list in get_nick_map():
             client.msg(channel, u' '.join([unicode(alias) for alias in nick_list]))
