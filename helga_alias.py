@@ -107,3 +107,10 @@ def user_rename(client, oldname, newname):
                 break
 
     update_nick_map(nick_map)
+
+@smokesignal.on('user_joined')
+def user_joined(client, user, channel):
+
+    if not find_aliases(nick):
+        nick_map(append([nick]))
+        update_nick_map(nick_map)
