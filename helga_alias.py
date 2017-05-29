@@ -53,17 +53,14 @@ def alias(client, channel, nick, message, cmd, args):
     Show the nick map.
 
     <user> !alias add <nick> <alias>
-    <user> !alias remove <alias>
-
-    Should allow 1. adds, removes, joins, splits
 
     """
-
-    logger.info('args: %s', args)
 
     if not args:
         if nick not in OPS:
             return
+    logger.info('args: %s', args)
+
 
         for nick_list in get_nick_map():
             client.msg(channel, u' '.join([unicode(alias) for alias in nick_list]))
@@ -75,12 +72,6 @@ def alias(client, channel, nick, message, cmd, args):
 
             user_rename(client, args[1], args[2])
 
-        # if args[0] == 'remove':
-        #     if len(args) < 2:
-        #         return 'Must specify an alias to remove'
-
-        # potentially a nick, do a search and return aliases, if is a
-        # nick in db
         if len(args) == 1:
             aliases = find_aliases(args[0])
             if aliases:
