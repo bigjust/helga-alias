@@ -35,16 +35,14 @@ def update_nick_map(nick_map):
 
 def find_aliases(nick):
     """
-    Returns a list of aliases where nick is found in nick_map, else returns []
+    Returns a list of aliases where nick is found in nick_map, else returns [nick]
     """
 
-    matched_nick_list = []
     for nick_list in get_nick_map():
         if nick in nick_list:
-            matched_nick_list = nick_list
-            break
+            return nick_list
 
-    return matched_nick_list
+    return [nick]
 
 @command('alias', help='Shows the nick map, should allow modification')
 def alias(client, channel, nick, message, cmd, args):
@@ -87,7 +85,7 @@ def add_names(client, nicks):
 
     for nick in nicks:
         aliases = find_aliases(nick)
-        if not aliases:
+        if len(aliases) > 1:
             nick_map.append([nick])
             update_nick_map(nick_map)
 
@@ -98,7 +96,7 @@ def user_rename(client, oldname, newname):
     oldname_aliases = find_aliases(oldname)
     newname_aliases = find_aliases(newname)
 
-    if oldname_aliases and newname_aliases:
+    if len(oldname_aliases) > 1 and len(newname_aliases) > 1:
         # nick list merge!
         nick_map.pop(nick_map.index(newname_aliases))
         nick_map[nick_map.index(oldname_aliases)].extend(newname_aliases)
