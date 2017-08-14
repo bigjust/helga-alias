@@ -38,9 +38,14 @@ def find_aliases(nick):
     Returns a list of aliases where nick is found in nick_map, else returns [nick]
     """
 
-    for nick_list in get_nick_map():
+    nick_map = get_nick_map()
+    for nick_list in nick_map:
         if nick in nick_list:
             return nick_list
+
+    # if we've reached here, that means no entries have been found, and we need to add one
+    nick_map.append([nick])
+    update_nick_map(nick_map)
 
     return [nick]
 
@@ -81,13 +86,8 @@ def alias(client, channel, nick, message, cmd, args):
 @smokesignal.on('names_reply')
 def add_names(client, nicks):
 
-    nick_map = get_nick_map()
-
     for nick in nicks:
         aliases = find_aliases(nick)
-        if len(aliases) > 1:
-            nick_map.append([nick])
-            update_nick_map(nick_map)
 
 @smokesignal.on('user_rename')
 def user_rename(client, oldname, newname):
@@ -112,7 +112,4 @@ def user_rename(client, oldname, newname):
 
 @smokesignal.on('user_joined')
 def user_joined(client, user, channel):
-
-    if not find_aliases(user):
-        nick_map(append([user]))
-        update_nick_map(nick_map)
+    find_aliases(user)
