@@ -20,7 +20,7 @@ logger = log.getLogger(__name__)
 # }
 
 
-def find_alias(nick):
+def find_alias(nick, create_new=True):
     """
     Returns a tuple containing the key nick for an alias given, and
     the list of aliases associated with the nick.
@@ -31,11 +31,12 @@ def find_alias(nick):
         if nick in aliases:
             return nick_result.get('recommended_nick', aliases[0]), nick_result['aliases']
 
-    # nick wasn't found, add new entry in alias collection
-    db.alias.insert({
-        'recommended_nick': nick,
-        'aliases': [nick],
-    })
+    if create_new:
+        # nick wasn't found, add new entry in alias collection
+        db.alias.insert({
+            'recommended_nick': nick,
+            'aliases': [nick],
+        })
 
     return nick, [nick]
 
