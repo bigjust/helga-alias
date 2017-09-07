@@ -8,108 +8,145 @@ OPS = getattr(settings, 'OPERATORS', [])
 
 logger = log.getLogger(__name__)
 
+# Alias data structure
+#
+# Each record in the mongo collection will have two attributes, the
+# list of aliases as detected or via commands, and optionally a
+# recommended alias that would be returned for any alias in the list.
+#
+# {
+#  'recommended_alias': 'bigjust',
+#  'aliases': ['bigjust', 'justbig', 'justin'],
+# }
 
 
-def get_nick_map():
+def find_alias(nick):
     """
-    Returns the nick map from storage.
-
-    returns a list of lists.
-
-    """
-
-    nick_map_doc = db.alias.find_one()
-    nick_map = []
-    if nick_map_doc:
-        nick_map = nick_map_doc['nick_map']
-
-    return nick_map
-
-def update_nick_map(nick_map):
-    """
-    Stores the nick map in storage.
+    Returns a tuple containing the key nick for an alias given, and
+    the list of aliases associated with the nick.
     """
 
-    result = db.alias.replace_one({}, {'nick_map': nick_map}, True)
-    logger.info('result.modified: %s', result.modified_count)
+    for nick_result in db.alias.find():
+        aliases = nick_result['aliases']
+        if nick in aliases:
+            return nick_result.get('recommended_nick', aliases[0]), nick_result['aliases']
 
-def find_aliases(nick):
-    """
-    Returns a list of aliases where nick is found in nick_map, else returns [nick]
-    """
+    # nick wasn't found, add new entry in alias collection
+    db.alias.insert({
+        'recommended_nick': nick,
+        'aliases': [nick],
+    })
 
-    nick_map = get_nick_map()
-    for nick_list in nick_map:
-        if nick in nick_list:
-            return nick_list
-
-    # if we've reached here, that means no entries have been found, and we need to add one
-    nick_map.append([nick])
-    update_nick_map(nick_map)
-
-    return [nick]
+    return nick, [nick]
 
 @command('alias', help='Shows the nick map, should allow modification')
 def alias(client, channel, nick, message, cmd, args):
     """
 
-    Show the nick map.
+    <user> !alias
+    Ops Only! Show the nick map.
 
     <user> !alias add <nick> <alias>
+    Tie an alias to a nick
+
+    <user> !alias drop <nick> <alias>
+    Drops alias from the list of aliases for 'nick'
 
     """
 
     if not args:
         if nick not in OPS:
-            client.msg(channel, u'only operators ({}) can use this command'.format(
-                ','.join(OPS)
-            ))
+            client.msg(
+                channel,
+                u'only operators ({}) can use this command'.format(
+                    ','.join(OPS)
+                ))
             return
 
-        for nick_list in get_nick_map():
-            client.msg(channel, u' '.join([unicode(alias) for alias in nick_list]))
+        for nick_result in db.alias.find():
+            client.msg(channel, u'{}: {}'.format(
+                nick_result['recommended_nick'],
+                ', '.join(nick_result['aliases'])
+            ))
 
     if args:
         if args[0] == 'add':
             if len(args) < 3:
                 return 'Must specify both a nick and an alias'
 
-            user_rename(client, args[1], args[2])
+            merge_nicks(args[1], args[2])
+            client.msg(channel, 'Done!')
+
+        if args[0] == 'drop':
+            if len(args) != 2:
+                return 'usage: alias drop <alias>'
+
+            nick_key, aliases = find_alias(args[1])
+            aliases.pop(aliases.index(args[1]))
+            db.alias.update_one({
+                'recommended_nick': nick_key,
+            },{
+                '$set': {'aliases': aliases},
+            })
+
+            client.msg(channel, 'Dropped.')
 
         if len(args) == 1:
-            aliases = find_aliases(args[0])
-            if aliases:
-                # that's a bingo!
-                return u' '.join([unicode(alias) for alias in aliases])
-
+            nick_key, aliases = find_alias(args[0])
+            return u'{}: {}'.format(nick_key, ', '.join(aliases))
 
 @smokesignal.on('names_reply')
 def add_names(client, nicks):
+    """
+    For each nick in names reply, typically called upon entering a
+    channel, call find_alias(), which would, at minimum, create a
+    record for each nick found.
+    """
 
     for nick in nicks:
-        aliases = find_aliases(nick)
+        find_alias(nick)
+
+def merge_nicks(oldname, newname):
+    """
+    Merge to alias lists, using the oldname as the recommended alias
+    key.
+    """
+
+    oldname_key, oldname_aliases = find_alias(oldname)
+    newname_key, newname_aliases = find_alias(newname)
+
+    if oldname_key != newname_key:
+        logger.debug('oldname_aliases: {}'.format(oldname_aliases))
+        logger.debug('newname_aliases: {}'.format(newname_aliases))
+
+        oldname_aliases.extend(newname_aliases)
+        merged_aliases = list(set(oldname_aliases))
+
+        logger.debug('merged_aliases: {}'.format(merged_aliases))
+
+        db.alias.update_one({
+            'recommended_nick': oldname_key,
+        }, {
+            '$set': {'aliases': merged_aliases},
+        })
+
+        db.alias.delete_one({
+            'recommended_nick': newname_key,
+        })
 
 @smokesignal.on('user_rename')
 def user_rename(client, oldname, newname):
+    """
+    Make sure we create an entry for each name, we'll leave merging to
+    OPS.
+    """
 
-    nick_map = get_nick_map()
-    oldname_aliases = find_aliases(oldname)
-    newname_aliases = find_aliases(newname)
-
-    if len(oldname_aliases) > 1 and len(newname_aliases) > 1:
-        # nick list merge!
-        nick_map.pop(nick_map.index(newname_aliases))
-        nick_map[nick_map.index(oldname_aliases)].extend(newname_aliases)
-
-    elif not oldname_aliases:
-        # we haven't seen either nick, add as a new list
-        nick_map.append([oldname, newname])
-    else:
-        # the usual, add new name to a current list
-        nick_map[nick_map.index(oldname_aliases)].append(newname)
-
-    update_nick_map(nick_map)
+    find_alias(newname)
 
 @smokesignal.on('user_joined')
 def user_joined(client, user, channel):
-    find_aliases(user)
+    """
+    Make sure we have an entry for new users that join channel.
+    """
+
+    find_alias(user)
