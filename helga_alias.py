@@ -34,7 +34,7 @@ def get_aliases():
 
 def is_alias(potential_nick):
 
-    return potential_nick in get_aliases():
+    return potential_nick in get_aliases()
 
 def find_alias(nick, create_new=True):
     """
