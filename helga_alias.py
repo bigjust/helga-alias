@@ -20,6 +20,19 @@ logger = log.getLogger(__name__)
 # }
 
 
+def get_aliases():
+    """
+    Returns a flat list of all known aliases.
+    """
+
+    aliases = []
+
+    for result in db.alias.find():
+        aliases.extend(result['aliases'])
+
+    return aliases
+
+
 def is_alias(potential_nick):
 
     for result in db.alias.find():
