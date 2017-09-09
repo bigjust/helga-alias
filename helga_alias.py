@@ -32,15 +32,9 @@ def get_aliases():
 
     return aliases
 
-
 def is_alias(potential_nick):
 
-    for result in db.alias.find():
-        if potential_nick in result['aliases']:
-            return True
-
-    return False
-
+    return potential_nick in get_aliases():
 
 def find_alias(nick, create_new=True):
     """
