@@ -56,7 +56,11 @@ def find_alias(nick, create_new=True):
 
     return nick, [nick]
 
-@command('alias', help='Shows the nick map, should allow modification')
+@command('alias', help=('',
+    'Show/modify the nick map. Usage: !alias; show current nick mappings. ',
+    '!alias <nick>; show mapping for <nick>. !alias add <nick> <alias>; ',
+    'add alias for nick. !alias drop <alias>; Drop alias from whatever ',
+    'nick it is mapped to.'))
 def alias(client, channel, nick, message, cmd, args):
     """
 
